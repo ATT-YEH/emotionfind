@@ -120,6 +120,7 @@ function Secondary({ onClick, children }: { onClick?: () => void; children: Reac
 export default function App() {
   const [route, setRoute] = useState<"home" | "record" | "history" | "done">("home");
   const [entries, setEntries] = useState<Entry[]>(() => loadEntries());
+  const [openEntryId, setOpenEntryId] = useState<string | null>(null);
 
   // record state
   const [eventText, setEventText] = useState("");
@@ -223,7 +224,14 @@ export default function App() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {entries.slice(0, 50).map((e) => (
-              <div key={e.id} style={styles.row}>
+              <div
+                key={e.id}
+                onClick={() => setOpenEntryId((id) => (id === e.id ? null : e.id))}
+                style={{
+                  ...styles.row,
+                  ...(openEntryId === e.id ? styles.rowOpen : {}),
+                }}
+              >
                 <div style={{ fontSize: 12, opacity: 0.7 }}>{fmtTime(e.ts)}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
                   {e.emotions.map((x) => (
@@ -234,7 +242,45 @@ export default function App() {
                   <span style={styles.badge}>強度 {e.intensity}</span>
                   <span style={styles.badge}>{e.impulse}</span>
                 </div>
-                {e.eventText ? <div style={{ marginTop: 6, opacity: 0.85 }}>{e.eventText}</div> : null}
+
+                {openEntryId === e.id ? (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {e.eventText ? (
+                      <div>
+                        <div style={styles.detailLabel}>發生了什麼</div>
+                        <div style={styles.detailText}>{e.eventText}</div>
+                      </div>
+                    ) : null}
+
+                    {e.autoThought ? (
+                      <div>
+                        <div style={styles.detailLabel}>我當時在想</div>
+                        <div style={styles.detailText}>{e.autoThought}</div>
+                      </div>
+                    ) : null}
+
+                    {e.need ? (
+                      <div>
+                        <div style={styles.detailLabel}>我真正需要</div>
+                        <div style={styles.detailText}>{e.need}</div>
+                      </div>
+                    ) : null}
+
+                    {e.microAction ? (
+                      <div>
+                        <div style={styles.detailLabel}>我選擇的行動</div>
+                        <div style={styles.detailText}>{e.microAction}</div>
+                      </div>
+                    ) : null}
+
+                    {e.selfTalk ? (
+                      <div>
+                        <div style={styles.detailLabel}>我對自己說</div>
+                        <div style={styles.detailText}>{e.selfTalk}</div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -549,6 +595,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.10)",
     background: "rgba(0,0,0,0.18)",
+    cursor: "pointer",
   },
   badge: {
     display: "inline-block",
@@ -571,5 +618,19 @@ const styles: Record<string, React.CSSProperties> = {
   pickRowActive: {
     border: "1px solid rgba(255,255,255,0.35)",
     background: "rgba(255,255,255,0.10)",
+  },
+  rowOpen: {
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.12)",
+  },
+  detailLabel: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginBottom: 4,
+  },
+  detailText: {
+    fontSize: 14,
+    opacity: 0.95,
+    lineHeight: 1.5,
   },
 };
