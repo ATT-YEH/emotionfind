@@ -12,6 +12,7 @@ type Emotion =
 
 type Impulse = "立刻行動" | "逃避" | "自責" | "控制" | "其他";
 type Need = "安全感" | "被肯定" | "被尊重" | "休息" | "確定感" | "被理解" | "其他";
+type ReactionType = "討好" | "指責" | "超理智" | "打岔" | "不確定";
 
 type Entry = {
   id: string;
@@ -20,6 +21,7 @@ type Entry = {
   emotions: Emotion[];
   intensity: number; // 0-10
   impulse: Impulse;
+  reactionType?: ReactionType;
   autoThought: string;
   need: Need;
   microAction: string;
@@ -29,6 +31,14 @@ type Entry = {
 const EMOTIONS: Emotion[] = ["焦慮", "不甘心", "憤怒", "沮喪", "羞愧", "恐懼", "空虛", "其他"];
 const IMPULSES: Impulse[] = ["立刻行動", "逃避", "自責", "控制", "其他"];
 const NEEDS: Need[] = ["安全感", "被肯定", "被尊重", "休息", "確定感", "被理解", "其他"];
+export const REACTION_OPTIONS: ReactionType[] = ["討好", "指責", "超理智", "打岔", "不確定"];
+export const reactionHint: Record<ReactionType, string> = {
+  討好: "壓住自己、希望關係不要壞",
+  指責: "想控制、想改變對方",
+  超理智: "不去感覺，只想分析",
+  打岔: "轉移焦點、先不要面對",
+  不確定: "現在還不確定也沒關係",
+};
 
 const MICRO_ACTION_PRESETS = [
   "先停 15 分鐘不做任何決定",
@@ -117,7 +127,7 @@ function Secondary({ onClick, children }: { onClick?: () => void; children: Reac
 
 // ---------- App ----------
 export default function App() {
-  const [route, setRoute] = useState<"home" | "record" | "history" | "done">("home");
+  const [route, setRoute] = useState<"home" | "record" | "reaction" | "history" | "done">("home");
   const [entries, setEntries] = useState<Entry[]>(() => loadEntries());
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
@@ -128,6 +138,7 @@ export default function App() {
   const [emotions, setEmotions] = useState<Emotion[]>([]);
   const [intensity, setIntensity] = useState(5);
   const [impulse, setImpulse] = useState<Impulse>("立刻行動");
+  const [reactionType, setReactionType] = useState<ReactionType | undefined>(undefined);
   const [autoThought, setAutoThought] = useState("");
   const [need, setNeed] = useState<Need>("安全感");
   const [microAction, setMicroAction] = useState(MICRO_ACTION_PRESETS[0] ?? "");
@@ -144,6 +155,7 @@ export default function App() {
     setEmotions([]);
     setIntensity(5);
     setImpulse("立刻行動");
+    setReactionType(undefined);
     setAutoThought("");
     setNeed("安全感");
     setMicroAction(MICRO_ACTION_PRESETS[0] ?? "");
@@ -167,6 +179,7 @@ export default function App() {
       emotions,
       intensity: clamp(intensity, 0, 10),
       impulse,
+      reactionType,
       autoThought: autoThought.trim(),
       need,
       microAction: microAction.trim(),
@@ -330,6 +343,7 @@ export default function App() {
                       ))}
                       <span style={styles.badge}>強度 {e.intensity}</span>
                       <span style={styles.badge}>{e.impulse}</span>
+                      {e.reactionType ? <span style={styles.badge}>反應：{e.reactionType}</span> : null}
                     </div>
 
                     {openEntryId === e.id ? (
@@ -345,6 +359,16 @@ export default function App() {
                           <div>
                             <div style={styles.detailLabel}>我當時在想</div>
                             <div style={styles.detailText}>{e.autoThought}</div>
+                          </div>
+                        ) : null}
+
+                        {e.reactionType ? (
+                          <div>
+                            <div style={styles.detailLabel}>反應模式</div>
+                            <div style={styles.detailText}>{e.reactionType}</div>
+                            <div style={{ ...styles.detailText, opacity: 0.7, fontSize: 12 }}>
+                              {reactionHint[e.reactionType]}
+                            </div>
                           </div>
                         ) : null}
 
@@ -415,6 +439,7 @@ export default function App() {
   }
 
   // ---------- record ----------
+  const REACTION_STEP_INDEX = 3;
   const steps = [
     {
       title: "① 發生了什麼？（事件）",
@@ -474,7 +499,7 @@ export default function App() {
       ),
     },
     {
-      title: "④ 我腦中正在相信的一句話是？",
+      title: "⑤ 我腦中正在相信的一句話是？",
       body: (
         <>
           <div style={styles.label}>我在想：</div>
@@ -488,7 +513,7 @@ export default function App() {
       ),
     },
     {
-      title: "⑤ 我真正需要的是？（選 1 個）",
+      title: "⑥ 我真正需要的是？（選 1 個）",
       body: (
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -502,7 +527,7 @@ export default function App() {
       ),
     },
     {
-      title: "⑥ 我願意選擇的最小不傷自己的行動",
+      title: "⑦ 我願意選擇的最小不傷自己的行動",
       body: (
         <>
           <div style={styles.label}>快速選一個：</div>
@@ -535,7 +560,7 @@ export default function App() {
       ),
     },
     {
-      title: "🔒 結尾一句（很重要）",
+      title: "⑧ 🔒 結尾一句（很重要）",
       body: (
         <>
           <div style={styles.label}>對自己說一句：</div>
@@ -561,7 +586,57 @@ export default function App() {
     },
   ] as const;
 
-  const isLast = step === steps.length - 1;
+  const totalSteps = steps.length + 1;
+  const isLast = step === totalSteps - 1;
+
+  if (route === "reaction") {
+    return (
+      <Page>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={styles.title}>反應模式</div>
+          <Secondary
+            onClick={() => {
+              setRoute("record");
+              setStep(REACTION_STEP_INDEX - 1);
+            }}
+          >
+            上一步
+          </Secondary>
+        </div>
+
+        <div style={{ height: 8 }} />
+        <div style={{ fontSize: 12, opacity: 0.7 }}>
+          Step {step + 1} / {totalSteps}
+        </div>
+
+        <div style={{ height: 14 }} />
+
+        <div style={{ fontSize: 16, fontWeight: 700 }}>此刻我比較像哪一種反應？</div>
+        <div style={{ height: 12 }} />
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {REACTION_OPTIONS.map((option) => (
+            <button
+              key={option}
+              onClick={() => {
+                setReactionType(option);
+                setStep(REACTION_STEP_INDEX + 1);
+                setRoute("record");
+              }}
+              style={{
+                ...styles.pickRow,
+                ...(reactionType === option ? styles.pickRowActive : {}),
+              }}
+              type="button"
+            >
+              <div style={{ fontWeight: 700 }}>{option}</div>
+              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{reactionHint[option]}</div>
+            </button>
+          ))}
+        </div>
+      </Page>
+    );
+  }
 
   return (
     <Page>
@@ -579,19 +654,32 @@ export default function App() {
 
       <div style={{ height: 8 }} />
       <div style={{ fontSize: 12, opacity: 0.7 }}>
-        Step {step + 1} / {steps.length}
+        Step {step + 1} / {totalSteps}
       </div>
 
       <div style={{ height: 14 }} />
 
-      <div style={{ fontSize: 16, fontWeight: 700 }}>{steps[step].title}</div>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>
+        {steps[step > REACTION_STEP_INDEX ? step - 1 : step].title}
+      </div>
       <div style={{ height: 12 }} />
-      <div>{steps[step].body}</div>
+      <div>{steps[step > REACTION_STEP_INDEX ? step - 1 : step].body}</div>
 
       <div style={{ height: 18 }} />
 
       <div style={{ display: "flex", gap: 10 }}>
-        <Secondary onClick={() => setStep((s) => Math.max(0, s - 1))}>上一步</Secondary>
+        <Secondary
+          onClick={() => {
+            if (step === REACTION_STEP_INDEX + 1) {
+              setRoute("reaction");
+              setStep(REACTION_STEP_INDEX);
+              return;
+            }
+            setStep((s) => Math.max(0, s - 1));
+          }}
+        >
+          上一步
+        </Secondary>
 
         <div style={{ flex: 1 }} />
 
@@ -599,7 +687,12 @@ export default function App() {
           <Primary
             onClick={() => {
               if (!canNext) return;
-              setStep((s) => Math.min(steps.length - 1, s + 1));
+              if (step === REACTION_STEP_INDEX - 1) {
+                setRoute("reaction");
+                setStep(REACTION_STEP_INDEX);
+                return;
+              }
+              setStep((s) => Math.min(totalSteps - 1, s + 1));
             }}
           >
             下一步
