@@ -120,6 +120,8 @@ export default function App() {
   const [route, setRoute] = useState<"home" | "record" | "history" | "done">("home");
   const [entries, setEntries] = useState<Entry[]>(() => loadEntries());
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
 
   // record state
   const [eventText, setEventText] = useState("");
@@ -175,6 +177,41 @@ export default function App() {
     setRoute("done");
   }
 
+  const selectedYear = selectedDate.getFullYear();
+  const selectedMonth = selectedDate.getMonth();
+  const daysInMonth = useMemo(
+    () => new Date(selectedYear, selectedMonth + 1, 0).getDate(),
+    [selectedYear, selectedMonth]
+  );
+
+  const filteredEntries = useMemo(
+    () =>
+      entries
+        .filter((e) => {
+          const d = new Date(e.ts);
+          return (
+            d.getFullYear() === selectedYear &&
+            d.getMonth() === selectedMonth &&
+            d.getDate() === selectedDate.getDate()
+          );
+        })
+        .slice(0, 50),
+    [entries, selectedDate, selectedMonth, selectedYear]
+  );
+
+  function selectMonth(monthIndex: number) {
+    const maxDay = new Date(selectedYear, monthIndex + 1, 0).getDate();
+    const nextDay = Math.min(selectedDate.getDate(), maxDay);
+    setSelectedDate(new Date(selectedYear, monthIndex, nextDay));
+    setOpenEntryId(null);
+    setIsMonthPickerOpen(false);
+  }
+
+  function selectDay(day: number) {
+    setSelectedDate(new Date(selectedYear, selectedMonth, day));
+    setOpenEntryId(null);
+  }
+
   // ---------- routes ----------
   if (route === "home") {
     return (
@@ -221,68 +258,123 @@ export default function App() {
         {entries.length === 0 ? (
           <div style={styles.hint}>目前還沒有紀錄。先按「我現在有情緒」記一筆。</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {entries.slice(0, 50).map((e) => (
-              <div
-                key={e.id}
-                onClick={() => setOpenEntryId((id) => (id === e.id ? null : e.id))}
-                style={{
-                  ...styles.row,
-                  ...(openEntryId === e.id ? styles.rowOpen : {}),
-                }}
-              >
-                <div style={{ fontSize: 12, opacity: 0.7 }}>{fmtTime(e.ts)}</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
-                  {e.emotions.map((x) => (
-                    <span key={x} style={styles.badge}>
-                      {x}
-                    </span>
-                  ))}
-                  <span style={styles.badge}>強度 {e.intensity}</span>
-                  <span style={styles.badge}>{e.impulse}</span>
-                </div>
+          <>
+            <div style={styles.calendarBox}>
+              <div style={styles.monthRow}>
+                <button
+                  onClick={() => setIsMonthPickerOpen((v) => !v)}
+                  style={styles.monthButton}
+                  type="button"
+                >
+                  {selectedYear} 年 {selectedMonth + 1} 月
+                  <span style={{ marginLeft: 6, opacity: 0.7 }}>▾</span>
+                </button>
 
-                {openEntryId === e.id ? (
-                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                    {e.eventText ? (
-                      <div>
-                        <div style={styles.detailLabel}>發生了什麼</div>
-                        <div style={styles.detailText}>{e.eventText}</div>
-                      </div>
-                    ) : null}
-
-                    {e.autoThought ? (
-                      <div>
-                        <div style={styles.detailLabel}>我當時在想</div>
-                        <div style={styles.detailText}>{e.autoThought}</div>
-                      </div>
-                    ) : null}
-
-                    {e.need ? (
-                      <div>
-                        <div style={styles.detailLabel}>我真正需要</div>
-                        <div style={styles.detailText}>{e.need}</div>
-                      </div>
-                    ) : null}
-
-                    {e.microAction ? (
-                      <div>
-                        <div style={styles.detailLabel}>我選擇的行動</div>
-                        <div style={styles.detailText}>{e.microAction}</div>
-                      </div>
-                    ) : null}
-
-                    {e.selfTalk ? (
-                      <div>
-                        <div style={styles.detailLabel}>我對自己說</div>
-                        <div style={styles.detailText}>{e.selfTalk}</div>
-                      </div>
-                    ) : null}
+                {isMonthPickerOpen ? (
+                  <div style={styles.monthDropdown}>
+                    {Array.from({ length: 12 }, (_, i) => i).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => selectMonth(m)}
+                        style={{
+                          ...styles.monthOption,
+                          ...(selectedMonth === m ? styles.monthOptionActive : {}),
+                        }}
+                        type="button"
+                      >
+                        {m + 1} 月
+                      </button>
+                    ))}
                   </div>
                 ) : null}
               </div>
-            ))}
-          </div>
+
+              <div style={styles.dayRow}>
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => selectDay(day)}
+                    style={{
+                      ...styles.dayButton,
+                      ...(selectedDate.getDate() === day ? styles.dayButtonActive : {}),
+                    }}
+                    type="button"
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            {filteredEntries.length === 0 ? (
+              <div style={styles.hint}>當天沒有紀錄。</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {filteredEntries.map((e) => (
+                  <div
+                    key={e.id}
+                    onClick={() => setOpenEntryId((id) => (id === e.id ? null : e.id))}
+                    style={{
+                      ...styles.row,
+                      ...(openEntryId === e.id ? styles.rowOpen : {}),
+                    }}
+                  >
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>{fmtTime(e.ts)}</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                      {e.emotions.map((x) => (
+                        <span key={x} style={styles.badge}>
+                          {x}
+                        </span>
+                      ))}
+                      <span style={styles.badge}>強度 {e.intensity}</span>
+                      <span style={styles.badge}>{e.impulse}</span>
+                    </div>
+
+                    {openEntryId === e.id ? (
+                      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                        {e.eventText ? (
+                          <div>
+                            <div style={styles.detailLabel}>發生了什麼</div>
+                            <div style={styles.detailText}>{e.eventText}</div>
+                          </div>
+                        ) : null}
+
+                        {e.autoThought ? (
+                          <div>
+                            <div style={styles.detailLabel}>我當時在想</div>
+                            <div style={styles.detailText}>{e.autoThought}</div>
+                          </div>
+                        ) : null}
+
+                        {e.need ? (
+                          <div>
+                            <div style={styles.detailLabel}>我真正需要</div>
+                            <div style={styles.detailText}>{e.need}</div>
+                          </div>
+                        ) : null}
+
+                        {e.microAction ? (
+                          <div>
+                            <div style={styles.detailLabel}>我選擇的行動</div>
+                            <div style={styles.detailText}>{e.microAction}</div>
+                          </div>
+                        ) : null}
+
+                        {e.selfTalk ? (
+                          <div>
+                            <div style={styles.detailLabel}>我對自己說</div>
+                            <div style={styles.detailText}>{e.selfTalk}</div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         <div style={{ height: 12 }} />
@@ -631,5 +723,74 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     opacity: 0.95,
     lineHeight: 1.5,
+  },
+  calendarBox: {
+    padding: 12,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(0,0,0,0.15)",
+  },
+  monthRow: {
+    position: "relative",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  monthButton: {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.16)",
+    background: "rgba(255,255,255,0.04)",
+    color: "inherit",
+    cursor: "pointer",
+    fontSize: 14,
+    width: "100%",
+    textAlign: "left",
+  },
+  monthDropdown: {
+    position: "absolute",
+    top: "calc(100% + 6px)",
+    left: 0,
+    right: 0,
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 6,
+    padding: 10,
+    borderRadius: 12,
+    background: "rgba(0,0,0,0.30)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    zIndex: 2,
+  },
+  monthOption: {
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.05)",
+    color: "inherit",
+    cursor: "pointer",
+    fontSize: 13,
+  },
+  monthOptionActive: {
+    border: "1px solid rgba(255,255,255,0.24)",
+    background: "rgba(255,255,255,0.12)",
+  },
+  dayRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(46px, 1fr))",
+    gap: 8,
+    marginTop: 12,
+  },
+  dayButton: {
+    padding: "10px 0",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.03)",
+    color: "inherit",
+    cursor: "pointer",
+    fontSize: 13,
+  },
+  dayButtonActive: {
+    border: "1px solid rgba(255,255,255,0.24)",
+    background: "rgba(255,255,255,0.15)",
   },
 };
