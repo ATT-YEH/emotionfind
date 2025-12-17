@@ -13,6 +13,14 @@ type Emotion =
 type Impulse = "立刻行動" | "逃避" | "自責" | "控制" | "其他";
 type Need = "安全感" | "被肯定" | "被尊重" | "休息" | "確定感" | "被理解" | "其他";
 type ReactionType = "討好" | "指責" | "超理智" | "打岔" | "不確定";
+const REACTION_OPTIONS: ReactionType[] = ["討好", "指責", "超理智", "打岔", "不確定"];
+const reactionHint: Record<ReactionType, string> = {
+  討好: "壓住自己、希望關係不要壞",
+  指責: "想控制、想改變對方",
+  超理智: "不去感覺，只想分析",
+  打岔: "轉移焦點、先不要面對",
+  不確定: "現在還不確定也沒關係",
+};
 
 type Entry = {
   id: string;
@@ -31,14 +39,6 @@ type Entry = {
 const EMOTIONS: Emotion[] = ["焦慮", "不甘心", "憤怒", "沮喪", "羞愧", "恐懼", "空虛", "其他"];
 const IMPULSES: Impulse[] = ["立刻行動", "逃避", "自責", "控制", "其他"];
 const NEEDS: Need[] = ["安全感", "被肯定", "被尊重", "休息", "確定感", "被理解", "其他"];
-export const REACTION_OPTIONS: ReactionType[] = ["討好", "指責", "超理智", "打岔", "不確定"];
-export const reactionHint: Record<ReactionType, string> = {
-  討好: "壓住自己、希望關係不要壞",
-  指責: "想控制、想改變對方",
-  超理智: "不去感覺，只想分析",
-  打岔: "轉移焦點、先不要面對",
-  不確定: "現在還不確定也沒關係",
-};
 
 const MICRO_ACTION_PRESETS = [
   "先停 15 分鐘不做任何決定",
